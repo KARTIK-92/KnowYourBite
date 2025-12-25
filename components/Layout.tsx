@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Leaf, Search, PieChart, User, Sun, Moon, LogOut } from 'lucide-react';
+import { Leaf, Search, PieChart, User, Sun, Moon, LogOut, LogIn } from 'lucide-react';
 import { UserProfile } from '../types';
 
 interface LayoutProps {
@@ -10,10 +10,12 @@ interface LayoutProps {
   isDarkMode: boolean;
   toggleTheme: () => void;
   onLogout: () => void;
+  onLoginClick: () => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, user, isDarkMode, toggleTheme, onLogout }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, user, isDarkMode, toggleTheme, onLogout, onLoginClick }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const isGuest = user.id === 'guest';
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-300">
@@ -60,7 +62,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
                  >
                     <div className="flex flex-col items-end">
                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{user.name}</span>
-                       <span className="text-xs text-slate-400 dark:text-slate-500">Basic Plan</span>
+                       <span className="text-xs text-slate-400 dark:text-slate-500">{isGuest ? 'Guest' : 'Basic Plan'}</span>
                     </div>
                     <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center border-2 border-white dark:border-slate-700 shadow-sm hover:border-emerald-400 transition-colors">
                        <User size={20} className="text-slate-500 dark:text-slate-400" />
@@ -69,12 +71,21 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
 
                  {showUserMenu && (
                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-100 dark:border-slate-800 py-1 z-50 animate-in fade-in slide-in-from-top-2">
-                     <button 
-                        onClick={() => { setShowUserMenu(false); onLogout(); }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center"
-                     >
-                        <LogOut size={16} className="mr-2" /> Sign Out
-                     </button>
+                     {isGuest ? (
+                        <button 
+                            onClick={() => { setShowUserMenu(false); onLoginClick(); }}
+                            className="w-full text-left px-4 py-2 text-sm text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 flex items-center font-medium"
+                        >
+                            <LogIn size={16} className="mr-2" /> Sign In / Sign Up
+                        </button>
+                     ) : (
+                        <button 
+                            onClick={() => { setShowUserMenu(false); onLogout(); }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center"
+                        >
+                            <LogOut size={16} className="mr-2" /> Sign Out
+                        </button>
+                     )}
                    </div>
                  )}
                </div>

@@ -32,7 +32,7 @@ export default function App() {
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [showAuth, setShowAuth] = useState(true);
+  const [showAuth, setShowAuth] = useState(false);
   
   // Theme management
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -51,7 +51,12 @@ export default function App() {
       setIsAuthenticated(true);
       setShowAuth(false);
     } else {
-      setShowAuth(true);
+      // Ensure guest state but don't show auth screen
+      if (user.id !== 'guest') {
+         setUser(GUEST_USER);
+      }
+      setIsAuthenticated(false);
+      setShowAuth(false);
     }
   }, []);
 
@@ -116,6 +121,10 @@ export default function App() {
   };
 
   // Auth Handlers
+  const handleLoginClick = () => {
+    setShowAuth(true);
+  };
+
   const handleLogin = async (email: string, password: string) => {
     setAuthLoading(true);
     setAuthError(null);
@@ -170,6 +179,11 @@ export default function App() {
   };
 
   const handleGuest = () => {
+    // Just close the auth modal if we are already in guest mode to preserve session
+    if (!isAuthenticated) {
+        setShowAuth(false);
+        return;
+    }
     setUser(GUEST_USER);
     setIsAuthenticated(false);
     setShowAuth(false);
@@ -179,7 +193,7 @@ export default function App() {
     localStorage.removeItem('kyb_current_user');
     setUser(GUEST_USER);
     setIsAuthenticated(false);
-    setShowAuth(true);
+    setShowAuth(false); // Don't show auth, go to guest mode
     setCurrentView('hero');
   };
 
@@ -203,6 +217,7 @@ export default function App() {
       isDarkMode={isDarkMode}
       toggleTheme={toggleTheme}
       onLogout={handleLogout}
+      onLoginClick={handleLoginClick}
     >
       <AnimatePresence mode="wait">
         {currentView === 'hero' && (
