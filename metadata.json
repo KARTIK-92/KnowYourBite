@@ -1,0 +1,7 @@
+{
+  "name": "KnowYourBite",
+  "description": "A startup-grade health & nutrition analysis platform powered by Gemini AI. Scan products, analyze ingredients, and track your diet with smart insights.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
