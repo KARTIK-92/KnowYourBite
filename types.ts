@@ -49,7 +49,9 @@ export interface DailyGoals {
   protein: number;
   carbs: number;
   fats: number;
-  sugar?: number;
+  sugar: number;
+  fiber: number;
+  salt: number;
 }
 
 export interface UserStats {

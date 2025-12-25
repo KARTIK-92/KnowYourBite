@@ -18,7 +18,10 @@ const GUEST_USER: UserProfile = {
     calories: 2200,
     protein: 150,
     carbs: 250,
-    fats: 70
+    fats: 70,
+    fiber: 30,
+    sugar: 50,
+    salt: 6
   },
   history: [],
   dietPlan: []
@@ -242,7 +245,6 @@ export default function App() {
           >
             <ProductSearch 
               onProductFound={handleProductSelect} 
-              recentHistory={user.history}
             />
           </motion.div>
         )}

@@ -79,8 +79,11 @@ const dailyGoalsSchema = {
     protein: { type: Type.NUMBER },
     carbs: { type: Type.NUMBER },
     fats: { type: Type.NUMBER },
+    sugar: { type: Type.NUMBER },
+    fiber: { type: Type.NUMBER },
+    salt: { type: Type.NUMBER },
   },
-  required: ['calories', 'protein', 'carbs', 'fats']
+  required: ['calories', 'protein', 'carbs', 'fats', 'sugar', 'fiber', 'salt']
 };
 
 export const analyzeProductImage = async (base64Image: string): Promise<ProductData> => {
@@ -209,7 +212,7 @@ export const generatePersonalizedDietPlan = async (stats: UserStats): Promise<Da
     Activity Level: ${stats.activityLevel}
     Goal: ${stats.goal}
 
-    Return the target daily calories, protein (g), carbs (g), and fats (g).
+    Return the target daily calories, protein (g), carbs (g), fats (g), sugar (g), fiber (g), and salt (g).
     Strictly JSON format matching the schema.
   `;
 

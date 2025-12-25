@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile, UserStats, DailyGoals, ProductData } from '../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Flame, Sparkles, Loader2, Plus, X, Search, Settings, Save, Calculator } from 'lucide-react';
+import { Flame, Sparkles, Loader2, Plus, X, Search, Settings, Save } from 'lucide-react';
 import { generatePersonalizedDietPlan, searchProductByName } from '../services/gemini';
 import { motion } from 'framer-motion';
 
@@ -44,18 +43,13 @@ export const DietPlanner: React.FC<DietPlannerProps> = ({ user, isDarkMode, onUp
       protein: acc.protein + (item.product.nutrition.protein * item.quantity),
       carbs: acc.carbs + (item.product.nutrition.carbs * item.quantity),
       fats: acc.fats + (item.product.nutrition.fats * item.quantity),
+      sugar: acc.sugar + (item.product.nutrition.sugar * item.quantity),
+      fiber: acc.fiber + ((item.product.nutrition.fiber || 0) * item.quantity),
+      salt: acc.salt + ((item.product.nutrition.salt || 0) * item.quantity),
     };
-  }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
+  }, { calories: 0, protein: 0, carbs: 0, fats: 0, sugar: 0, fiber: 0, salt: 0 });
 
-  const data = [
-    { name: 'Protein', current: Math.round(currentTotals.protein), goal: user.dailyGoals.protein, fill: '#10b981' },
-    { name: 'Carbs', current: Math.round(currentTotals.carbs), goal: user.dailyGoals.carbs, fill: '#3b82f6' },
-    { name: 'Fats', current: Math.round(currentTotals.fats), goal: user.dailyGoals.fats, fill: '#f59e0b' },
-  ];
-
-  const caloriePercentage = Math.min(100, (currentTotals.calories / user.dailyGoals.calories) * 100);
-  const axisColor = isDarkMode ? '#94a3b8' : '#64748b';
-  const barBgColor = isDarkMode ? '#1e293b' : '#f1f5f9';
+  const caloriePercentage = Math.min(100, (currentTotals.calories / (user.dailyGoals.calories || 1)) * 100);
 
   const handleSetGoals = async () => {
     if (setupMode === 'ai') {
@@ -126,10 +120,13 @@ export const DietPlanner: React.FC<DietPlannerProps> = ({ user, isDarkMode, onUp
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Daily Dashboard</h1>
-           <p className="text-slate-500 dark:text-slate-400">Comparing your intake against your weekly plan.</p>
+           <p className="text-slate-500 dark:text-slate-400">Comparing your intake against your personalized targets.</p>
         </div>
         <button 
-          onClick={() => setShowGoalSetup(true)}
+          onClick={() => {
+            setManualGoalsData(user.dailyGoals);
+            setShowGoalSetup(true);
+          }}
           className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
         >
            <Settings size={18} />
@@ -138,59 +135,85 @@ export const DietPlanner: React.FC<DietPlannerProps> = ({ user, isDarkMode, onUp
       </div>
 
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-        {/* Calorie Card */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col justify-between relative overflow-hidden transition-colors">
+        {/* Calorie Card - Takes up full width on mobile, 1/3 on desktop */}
+        <div className="lg:col-span-1 bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col justify-between relative overflow-hidden transition-colors h-full">
           <div className="absolute top-0 right-0 w-32 h-32 bg-orange-100 dark:bg-orange-900/20 rounded-bl-full -mr-8 -mt-8 opacity-50"></div>
           <div>
             <div className="flex items-center space-x-2 mb-2">
               <Flame className="text-orange-500 h-5 w-5" />
               <span className="font-bold text-slate-700 dark:text-slate-300">Calories</span>
             </div>
-            <div className="flex items-baseline space-x-1">
-              <span className="text-4xl font-extrabold text-slate-900 dark:text-white">{Math.round(currentTotals.calories)}</span>
-              <span className="text-slate-400">/ {user.dailyGoals.calories}</span>
+            <div className="flex items-baseline space-x-1 mt-4">
+              <span className="text-5xl font-extrabold text-slate-900 dark:text-white">{Math.round(currentTotals.calories)}</span>
+              <span className="text-slate-400 font-medium text-lg">/ {user.dailyGoals.calories}</span>
             </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">kcal consumed</p>
           </div>
-          <div className="mt-6">
-            <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div className="mt-8">
+            <div className="h-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-orange-400 to-red-500 transition-all duration-1000"
+                className="h-full bg-gradient-to-r from-orange-400 to-red-500 transition-all duration-1000 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
                 style={{ width: `${caloriePercentage}%` }}
               ></div>
             </div>
-            <p className="text-xs text-slate-400 mt-2 text-right">{Math.round(caloriePercentage)}% of daily goal</p>
+            <p className="text-xs text-slate-400 mt-2 text-right font-medium">{Math.round(caloriePercentage)}% of daily goal</p>
           </div>
         </div>
 
-        {/* Macro Chart */}
-        <div className="md:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-slate-900 dark:text-white">Macro Distribution (g)</h3>
-                <div className="flex space-x-4 text-xs">
-                    <div className="flex items-center"><span className="w-2 h-2 rounded-full bg-emerald-500 mr-1"></span> Protein</div>
-                    <div className="flex items-center"><span className="w-2 h-2 rounded-full bg-blue-500 mr-1"></span> Carbs</div>
-                    <div className="flex items-center"><span className="w-2 h-2 rounded-full bg-amber-500 mr-1"></span> Fats</div>
-                </div>
-            </div>
-            <div className="h-48 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" tick={{ fill: axisColor, fontSize: 12 }} width={60} axisLine={false} tickLine={false} />
-                    <Tooltip 
-                      cursor={{fill: 'transparent'}} 
-                      contentStyle={{ backgroundColor: isDarkMode ? '#1e293b' : '#fff', border: 'none', borderRadius: '8px', color: isDarkMode ? '#fff' : '#000' }}
-                    />
-                    <Bar dataKey="current" radius={[0, 4, 4, 0]} barSize={20}>
-                      {data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                    <Bar dataKey="goal" fill={barBgColor} radius={[0, 4, 4, 0]} barSize={20} />
-                  </BarChart>
-              </ResponsiveContainer>
+        {/* Nutrient Progress Bars - Takes up full width on mobile, 2/3 on desktop */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
+            <h3 className="font-bold text-slate-900 dark:text-white mb-6 text-lg">Nutrient Breakdown</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                <NutrientBar 
+                    label="Protein" 
+                    current={currentTotals.protein} 
+                    target={user.dailyGoals.protein} 
+                    unit="g" 
+                    colorClass="bg-emerald-500" 
+                    bgColorClass="bg-emerald-100 dark:bg-emerald-900/30"
+                />
+                <NutrientBar 
+                    label="Carbohydrates" 
+                    current={currentTotals.carbs} 
+                    target={user.dailyGoals.carbs} 
+                    unit="g" 
+                    colorClass="bg-blue-500" 
+                    bgColorClass="bg-blue-100 dark:bg-blue-900/30"
+                />
+                <NutrientBar 
+                    label="Fats" 
+                    current={currentTotals.fats} 
+                    target={user.dailyGoals.fats} 
+                    unit="g" 
+                    colorClass="bg-amber-500" 
+                    bgColorClass="bg-amber-100 dark:bg-amber-900/30"
+                />
+                <NutrientBar 
+                    label="Fiber" 
+                    current={currentTotals.fiber} 
+                    target={user.dailyGoals.fiber} 
+                    unit="g" 
+                    colorClass="bg-purple-500" 
+                    bgColorClass="bg-purple-100 dark:bg-purple-900/30"
+                />
+                <NutrientBar 
+                    label="Sugar" 
+                    current={currentTotals.sugar} 
+                    target={user.dailyGoals.sugar} 
+                    unit="g" 
+                    colorClass="bg-pink-500" 
+                    bgColorClass="bg-pink-100 dark:bg-pink-900/30"
+                />
+                <NutrientBar 
+                    label="Salt" 
+                    current={currentTotals.salt} 
+                    target={user.dailyGoals.salt} 
+                    unit="g" 
+                    colorClass="bg-slate-500" 
+                    bgColorClass="bg-slate-200 dark:bg-slate-700"
+                />
             </div>
         </div>
       </div>
@@ -369,7 +392,7 @@ export const DietPlanner: React.FC<DietPlannerProps> = ({ user, isDarkMode, onUp
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900 dark:text-white"
                       />
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">Protein (g)</label>
                         <input 
@@ -394,6 +417,33 @@ export const DietPlanner: React.FC<DietPlannerProps> = ({ user, isDarkMode, onUp
                             type="number" 
                             value={manualGoalsData.fats}
                             onChange={(e) => setManualGoalsData({...manualGoalsData, fats: Number(e.target.value)})}
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900 dark:text-white"
+                        />
+                        </div>
+                        <div>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">Fiber (g)</label>
+                        <input 
+                            type="number" 
+                            value={manualGoalsData.fiber}
+                            onChange={(e) => setManualGoalsData({...manualGoalsData, fiber: Number(e.target.value)})}
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900 dark:text-white"
+                        />
+                        </div>
+                         <div>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">Sugar (g)</label>
+                        <input 
+                            type="number" 
+                            value={manualGoalsData.sugar}
+                            onChange={(e) => setManualGoalsData({...manualGoalsData, sugar: Number(e.target.value)})}
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900 dark:text-white"
+                        />
+                        </div>
+                        <div>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">Salt (g)</label>
+                        <input 
+                            type="number" 
+                            value={manualGoalsData.salt}
+                            onChange={(e) => setManualGoalsData({...manualGoalsData, salt: Number(e.target.value)})}
                             className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900 dark:text-white"
                         />
                         </div>
@@ -477,7 +527,6 @@ export const DietPlanner: React.FC<DietPlannerProps> = ({ user, isDarkMode, onUp
                                     <span>{foundFood.nutrition.calories} kcal</span>
                                     <span>P: {foundFood.nutrition.protein}g</span>
                                     <span>C: {foundFood.nutrition.carbs}g</span>
-                                    <span>F: {foundFood.nutrition.fats}g</span>
                                 </div>
                             </div>
                         </div>
@@ -529,6 +578,31 @@ export const DietPlanner: React.FC<DietPlannerProps> = ({ user, isDarkMode, onUp
 
     </div>
   );
+};
+
+// Helper components
+const NutrientBar = ({ label, current, target, unit, colorClass, bgColorClass }: any) => {
+    const percentage = Math.min(100, (current / (target || 1)) * 100);
+    const roundedCurrent = Math.round(current);
+    
+    return (
+        <div className="mb-2">
+            <div className="flex justify-between items-end mb-2">
+                <span className="font-bold text-sm text-slate-700 dark:text-slate-200">{label}</span>
+                <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <span className="text-slate-900 dark:text-white font-bold">{roundedCurrent}{unit}</span> 
+                    <span className="mx-1">/</span> 
+                    {target}{unit}
+                </div>
+            </div>
+            <div className={`h-3 w-full rounded-full overflow-hidden ${bgColorClass}`}>
+                <div 
+                    className={`h-full rounded-full transition-all duration-1000 ${colorClass}`} 
+                    style={{ width: `${percentage}%` }}
+                ></div>
+            </div>
+        </div>
+    );
 };
 
 const Utensils = ({ size, className }: any) => (
