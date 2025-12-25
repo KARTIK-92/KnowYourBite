@@ -1,7 +1,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ProductData, UserStats, DailyGoals } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Lazy initialization to prevent app crash if API key is missing at startup
+let aiInstance: GoogleGenAI | null = null;
+
+const getAi = () => {
+  if (!aiInstance) {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      throw new Error("API Key is missing. Please ensure process.env.API_KEY is set.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+};
 
 // Schema for structured JSON output
 const productSchema = {
@@ -67,7 +79,7 @@ const dailyGoalsSchema = {
 
 export const analyzeProductImage = async (base64Image: string): Promise<ProductData> => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAi().models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
         parts: [
@@ -151,7 +163,7 @@ export const searchProductByName = async (query: string): Promise<ProductData> =
   }
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAi().models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
@@ -191,7 +203,7 @@ export const generatePersonalizedDietPlan = async (stats: UserStats): Promise<Da
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAi().models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
