@@ -1,3 +1,4 @@
+
 export interface Ingredient {
   name: string;
   status: 'good' | 'bad' | 'neutral';
@@ -61,10 +62,12 @@ export interface UserStats {
 }
 
 export interface UserProfile {
+  id: string;
   name: string;
   email: string;
+  password?: string; // In a real app, never store plain text passwords
   dailyGoals: DailyGoals;
-  history: string[]; // Product IDs
+  history: ProductData[]; // Changed to store full product data for history display
   dietPlan: DietItem[];
   stats?: UserStats;
 }

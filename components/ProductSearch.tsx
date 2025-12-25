@@ -1,13 +1,15 @@
+
 import React, { useState, useRef, useCallback } from 'react';
-import { Camera, Search, Upload, X, Loader2, Zap } from 'lucide-react';
+import { Camera, Search, Upload, X, Loader2, Zap, Clock, ChevronRight } from 'lucide-react';
 import { analyzeProductImage, searchProductByName } from '../services/gemini';
 import { ProductData } from '../types';
 
 interface ProductSearchProps {
   onProductFound: (product: ProductData) => void;
+  recentHistory: ProductData[];
 }
 
-export const ProductSearch: React.FC<ProductSearchProps> = ({ onProductFound }) => {
+export const ProductSearch: React.FC<ProductSearchProps> = ({ onProductFound, recentHistory }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -167,6 +169,37 @@ export const ProductSearch: React.FC<ProductSearchProps> = ({ onProductFound }) 
             </div>
           )}
         </div>
+
+        {/* Recent Searches */}
+        {recentHistory.length > 0 && (
+          <div className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 p-6">
+            <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center">
+              <Clock className="h-4 w-4 mr-2" /> Recent Searches
+            </h3>
+            <div className="space-y-2">
+              {recentHistory.slice(0, 3).map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => onProductFound(item)}
+                  className="w-full flex items-center p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-400 transition-all group text-left"
+                >
+                  <div className="h-10 w-10 bg-slate-100 dark:bg-slate-800 rounded-lg mr-3 overflow-hidden flex-shrink-0">
+                    {item.imageUrl && !item.imageUrl.includes('placehold') ? (
+                       <img src={item.imageUrl} className="h-full w-full object-cover" alt="" />
+                    ) : (
+                       <div className="h-full w-full flex items-center justify-center text-slate-400 font-bold">{item.name[0]}</div>
+                    )}
+                  </div>
+                  <div className="flex-grow">
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 line-clamp-1">{item.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{item.brand}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600 group-hover:text-emerald-500" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Camera Modal Overlay */}
