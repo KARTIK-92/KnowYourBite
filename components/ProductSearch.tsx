@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useCallback } from 'react';
-import { Camera, Search, Upload, X, Loader2, Zap, Clock, ChevronRight } from 'lucide-react';
+import { Camera, Search, Upload, X, Loader2, Zap, Clock, ChevronRight, AlertCircle } from 'lucide-react';
 import { analyzeProductImage, searchProductByName } from '../services/gemini';
 import { ProductData } from '../types';
 
@@ -91,8 +91,9 @@ export const ProductSearch: React.FC<ProductSearchProps> = ({ onProductFound, re
         product = await searchProductByName(input);
       }
       onProductFound(product);
-    } catch (err) {
-      setError("Could not analyze product. Please try again.");
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Could not analyze product. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -143,22 +144,24 @@ export const ProductSearch: React.FC<ProductSearchProps> = ({ onProductFound, re
           <div className="grid grid-cols-2 gap-4">
             <button 
               onClick={startCamera}
-              className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all group"
+              disabled={isLoading}
+              className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all group disabled:opacity-50"
             >
               <Camera className="h-8 w-8 text-slate-400 dark:text-slate-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 mb-2" />
               <span className="font-medium text-slate-600 dark:text-slate-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-400">Scan Product</span>
             </button>
 
-            <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all group cursor-pointer">
-              <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+            <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all group cursor-pointer disabled:opacity-50">
+              <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} disabled={isLoading} />
               <Upload className="h-8 w-8 text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 mb-2" />
               <span className="font-medium text-slate-600 dark:text-slate-300 group-hover:text-blue-700 dark:group-hover:text-blue-400">Upload Photo</span>
             </label>
           </div>
 
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm flex items-center justify-center border border-red-100 dark:border-red-900/30">
-              {error}
+            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm flex items-start justify-center border border-red-100 dark:border-red-900/30">
+              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
