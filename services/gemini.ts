@@ -1,14 +1,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ProductData, UserStats, DailyGoals } from '../types';
 
-// Lazy initialization to prevent app crash if API key is missing at startup
+// Lazy initialization
 let aiInstance: GoogleGenAI | null = null;
 
 const getAi = () => {
   if (!aiInstance) {
-    const apiKey = process.env.API_KEY;
+    // Safe access for API key in browser environments (Vite)
+    // @ts-ignore
+    const apiKey = (typeof process !== 'undefined' ? process.env?.API_KEY : undefined) || 
+                   // @ts-ignore
+                   (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_API_KEY : undefined);
+
     if (!apiKey) {
-      throw new Error("API Key is missing. Please ensure process.env.API_KEY is set.");
+      console.error("Gemini API Key is missing. Ensure VITE_API_KEY or process.env.API_KEY is set.");
+      throw new Error("API_KEY_MISSING");
     }
     aiInstance = new GoogleGenAI({ apiKey });
   }
@@ -93,15 +99,19 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductD
       }
     });
 
-    const data = JSON.parse(response.text || "{}");
+    const text = response.text;
+    if (!text) throw new Error("No response from AI");
+    
+    const data = JSON.parse(text);
     return {
       ...data,
       id: crypto.randomUUID(),
       imageUrl: `data:image/jpeg;base64,${base64Image}` // Store the image to show it back
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Image Analysis Error:", error);
-    throw new Error("Failed to analyze product image.");
+    if (error.message === 'API_KEY_MISSING') throw error;
+    throw new Error(error.message || "Failed to analyze product image.");
   }
 };
 
@@ -136,7 +146,6 @@ export const searchProductByName = async (query: string): Promise<ProductData> =
   let prompt = "";
   
   if (offData) {
-     // If we have real data, use it to seed the AI analysis
      const info = {
         name: offData.product_name || query,
         brand: offData.brands || "Unknown",
@@ -157,7 +166,6 @@ export const searchProductByName = async (query: string): Promise<ProductData> =
      Crucially, suggest 3 specific healthier alternative products (competitors or variants) available in the market.
      The output must strictly follow the JSON schema.`;
   } else {
-     // Fallback to pure AI estimation
      prompt = `Provide detailed nutritional analysis for the product: "${query}". Estimate values based on standard data if specific brand data isn't exact.
      Also suggest 3 specific healthier alternative products.`;
   }
@@ -172,9 +180,11 @@ export const searchProductByName = async (query: string): Promise<ProductData> =
       }
     });
 
-    const data = JSON.parse(response.text || "{}");
+    const text = response.text;
+    if (!text) throw new Error("No response from AI");
+
+    const data = JSON.parse(text);
     
-    // Use OFF image if available, otherwise fallback to placeholder
     const imageUrl = offData?.image_front_url || offData?.image_url || `https://placehold.co/400x400/e2e8f0/1e293b?text=${encodeURIComponent(data.name)}`;
 
     return {
@@ -182,9 +192,10 @@ export const searchProductByName = async (query: string): Promise<ProductData> =
       id: crypto.randomUUID(),
       imageUrl: imageUrl
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Text Analysis Error:", error);
-    throw new Error("Failed to find product information.");
+    if (error.message === 'API_KEY_MISSING') throw error;
+    throw new Error(error.message || "Failed to find product information.");
   }
 };
 
@@ -213,8 +224,9 @@ export const generatePersonalizedDietPlan = async (stats: UserStats): Promise<Da
     });
 
     return JSON.parse(response.text || "{}");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Diet Plan Generation Error:", error);
-    throw new Error("Failed to generate diet plan.");
+    if (error.message === 'API_KEY_MISSING') throw error;
+    throw new Error(error.message || "Failed to generate diet plan.");
   }
 };

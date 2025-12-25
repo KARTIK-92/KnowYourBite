@@ -1,13 +1,14 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Camera, Search, Upload, X, Loader2, Zap } from 'lucide-react';
+import { Camera, Search, Upload, X, Loader2, Zap, Clock, ChevronRight } from 'lucide-react';
 import { analyzeProductImage, searchProductByName } from '../services/gemini';
 import { ProductData } from '../types';
 
 interface ProductSearchProps {
   onProductFound: (product: ProductData) => void;
+  recentHistory: ProductData[];
 }
 
-export const ProductSearch: React.FC<ProductSearchProps> = ({ onProductFound }) => {
+export const ProductSearch: React.FC<ProductSearchProps> = ({ onProductFound, recentHistory }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -164,6 +165,38 @@ export const ProductSearch: React.FC<ProductSearchProps> = ({ onProductFound }) 
             <div className="flex flex-col items-center justify-center py-4">
               <Loader2 className="h-8 w-8 text-emerald-500 animate-spin mb-2" />
               <p className="text-slate-500 dark:text-slate-400 text-sm">Analyzing product data...</p>
+            </div>
+          )}
+
+          {/* Recent History */}
+          {recentHistory && recentHistory.length > 0 && (
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 mb-4 text-slate-400 dark:text-slate-500">
+                <Clock className="h-4 w-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">Recent Scans</span>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {recentHistory.slice(0, 3).map((product, idx) => (
+                  <button
+                    key={`${product.id}-${idx}`}
+                    onClick={() => onProductFound(product)}
+                    className="flex items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group text-left border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center overflow-hidden flex-shrink-0 border border-slate-200 dark:border-slate-600">
+                      {product.imageUrl && !product.imageUrl.includes('placehold') ? (
+                        <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-xs font-bold text-slate-400">{product.name[0]}</span>
+                      )}
+                    </div>
+                    <div className="ml-3 flex-grow min-w-0">
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{product.name}</p>
+                      <p className="text-xs text-slate-500 truncate">{product.brand}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-emerald-500 transition-colors" />
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

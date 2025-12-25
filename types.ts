@@ -49,6 +49,7 @@ export interface DailyGoals {
   protein: number;
   carbs: number;
   fats: number;
+  sugar?: number;
 }
 
 export interface UserStats {
@@ -61,10 +62,12 @@ export interface UserStats {
 }
 
 export interface UserProfile {
+  id: string;
   name: string;
   email: string;
+  password?: string;
   dailyGoals: DailyGoals;
-  history: string[]; // Product IDs
+  history: ProductData[];
   dietPlan: DietItem[];
   stats?: UserStats;
 }
