@@ -1,25 +1,75 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User, ArrowRight, Loader2, Leaf } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { supabase } from '../services/supabase';
 
 interface AuthProps {
-  onLogin: (email: string, pass: string) => void;
-  onSignup: (name: string, email: string, pass: string) => void;
   onGuest: () => void;
-  isLoading: boolean;
-  error: string | null;
+  onSuccess: () => void;
 }
 
-export const Auth: React.FC<AuthProps> = ({ onLogin, onSignup, onGuest, isLoading, error }) => {
+export const Auth: React.FC<AuthProps> = ({ onGuest, onSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLogin) {
-      onLogin(formData.email, formData.password);
-    } else {
-      onSignup(formData.name, formData.email, formData.password);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (isLogin) {
+        // LOGIN
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) throw error;
+        onSuccess();
+      } else {
+        // SIGNUP
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: { full_name: formData.name }
+          }
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          // Initialize Profile Entry
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([
+              { 
+                id: data.user.id, 
+                email: formData.email, 
+                full_name: formData.name,
+                daily_goals: { // Default Goals
+                   calories: 2200, protein: 150, carbs: 250, fats: 70, fiber: 30, sugar: 50, salt: 6
+                },
+                history: [],
+                diet_plan: []
+              }
+            ]);
+            
+          if (profileError) {
+             console.error("Profile creation failed", profileError);
+             // Continue anyway, app will try to handle missing profile gracefully or lazy create
+          }
+        }
+        
+        onSuccess();
+      }
+    } catch (err: any) {
+      setError(err.message || "Authentication failed.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -81,6 +131,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onSignup, onGuest, isLoadin
                 <input
                   type="password"
                   required
+                  minLength={6}
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -117,7 +168,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, onSignup, onGuest, isLoadin
 
           <div className="mt-6 flex flex-col items-center space-y-4">
             <button
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => { setIsLogin(!isLogin); setError(null); }}
               className="text-sm text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium transition-colors"
             >
               {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from './components/Layout';
 import { Hero } from './components/Hero';
 import { ProductSearch } from './components/ProductSearch';
@@ -8,6 +8,7 @@ import { Auth } from './components/Auth';
 import { ProductData, UserProfile } from './types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { searchProductByName } from './services/gemini';
+import { supabase } from './services/supabase';
 
 // Mock initial user for guest
 const GUEST_USER: UserProfile = {
@@ -27,16 +28,31 @@ const GUEST_USER: UserProfile = {
   dietPlan: []
 };
 
+// Debounce helper
+const useDebounce = (value: any, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+};
+
 export default function App() {
   const [currentView, setCurrentView] = useState<'hero' | 'search' | 'details' | 'planner'>('hero');
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
   const [user, setUser] = useState<UserProfile>(GUEST_USER);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   
+  // Debounced user state for database syncing
+  const debouncedUser = useDebounce(user, 2000);
+
   // Theme management
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -46,33 +62,73 @@ export default function App() {
     return false;
   });
 
-  // Check for logged in user on mount
+  // 1. Initial Auth Check (Supabase)
   useEffect(() => {
-    const savedUser = localStorage.getItem('kyb_current_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
-      setShowAuth(false);
-    } else {
-      // Ensure guest state but don't show auth screen
-      if (user.id !== 'guest') {
-         setUser(GUEST_USER);
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        setIsAuthenticated(true);
+        // Fetch user profile from DB
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile && !error) {
+          setUser({
+            id: profile.id,
+            name: profile.full_name || 'User',
+            email: profile.email || session.user.email || '',
+            dailyGoals: profile.daily_goals || GUEST_USER.dailyGoals,
+            history: profile.history || [],
+            dietPlan: profile.diet_plan || [],
+            stats: profile.stats
+          });
+        } else {
+            // Fallback if profile missing but auth exists
+             setUser({ ...GUEST_USER, id: session.user.id, email: session.user.email || '' });
+        }
       }
-      setIsAuthenticated(false);
-      setShowAuth(false);
-    }
+    };
+
+    initAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session) {
+        setUser(GUEST_USER);
+        setIsAuthenticated(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Persist user state whenever it changes (if authenticated)
+  // 2. Sync Data to Supabase when user changes (and is auth'd)
   useEffect(() => {
-    if (isAuthenticated && user.id !== 'guest') {
-      localStorage.setItem('kyb_current_user', JSON.stringify(user));
-      // Update the user in the "database" (users array)
-      const users = JSON.parse(localStorage.getItem('kyb_users') || '[]');
-      const updatedUsers = users.map((u: UserProfile) => u.id === user.id ? user : u);
-      localStorage.setItem('kyb_users', JSON.stringify(updatedUsers));
+    const syncToDb = async () => {
+      if (isAuthenticated && user.id !== 'guest') {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            daily_goals: user.dailyGoals,
+            history: user.history,
+            diet_plan: user.dietPlan,
+            stats: user.stats
+          })
+          .eq('id', user.id);
+          
+        if (error) console.error("Error syncing to DB:", error);
+      }
+    };
+
+    // Only sync if debounced user matches current user to prevent stale closures
+    if (debouncedUser === user) {
+        syncToDb();
     }
-  }, [user, isAuthenticated]);
+  }, [debouncedUser, isAuthenticated]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -91,8 +147,8 @@ export default function App() {
   };
 
   const handleProductSelect = (product: ProductData) => {
-    // Add to history if not already there (check by name for simplicity)
-    const newHistory = [product, ...user.history.filter(p => p.name !== product.name)].slice(0, 10); // Keep last 10
+    // Add to history locally, useEffect will sync it
+    const newHistory = [product, ...user.history.filter(p => p.name !== product.name)].slice(0, 10);
     
     setUser(prev => ({
       ...prev,
@@ -128,61 +184,7 @@ export default function App() {
     setShowAuth(true);
   };
 
-  const handleLogin = async (email: string, password: string) => {
-    setAuthLoading(true);
-    setAuthError(null);
-    
-    setTimeout(() => {
-      const users = JSON.parse(localStorage.getItem('kyb_users') || '[]');
-      const foundUser = users.find((u: UserProfile) => u.email === email && u.password === password);
-      
-      if (foundUser) {
-        setUser(foundUser);
-        setIsAuthenticated(true);
-        localStorage.setItem('kyb_current_user', JSON.stringify(foundUser));
-        setShowAuth(false);
-      } else {
-        setAuthError("Invalid email or password");
-      }
-      setAuthLoading(false);
-    }, 1000);
-  };
-
-  const handleSignup = async (name: string, email: string, password: string) => {
-    setAuthLoading(true);
-    setAuthError(null);
-
-    setTimeout(() => {
-      const users = JSON.parse(localStorage.getItem('kyb_users') || '[]');
-      if (users.find((u: UserProfile) => u.email === email)) {
-        setAuthError("Email already exists");
-        setAuthLoading(false);
-        return;
-      }
-
-      const newUser: UserProfile = {
-        ...GUEST_USER,
-        id: crypto.randomUUID(),
-        name,
-        email,
-        password,
-        history: [],
-        dietPlan: []
-      };
-
-      users.push(newUser);
-      localStorage.setItem('kyb_users', JSON.stringify(users));
-      
-      setUser(newUser);
-      setIsAuthenticated(true);
-      localStorage.setItem('kyb_current_user', JSON.stringify(newUser));
-      setShowAuth(false);
-      setAuthLoading(false);
-    }, 1000);
-  };
-
   const handleGuest = () => {
-    // Just close the auth modal if we are already in guest mode to preserve session
     if (!isAuthenticated) {
         setShowAuth(false);
         return;
@@ -190,24 +192,22 @@ export default function App() {
     setUser(GUEST_USER);
     setIsAuthenticated(false);
     setShowAuth(false);
+    supabase.auth.signOut();
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('kyb_current_user');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setUser(GUEST_USER);
     setIsAuthenticated(false);
-    setShowAuth(false); // Don't show auth, go to guest mode
+    setShowAuth(false);
     setCurrentView('hero');
   };
 
   if (showAuth) {
     return (
       <Auth 
-        onLogin={handleLogin} 
-        onSignup={handleSignup} 
         onGuest={handleGuest}
-        isLoading={authLoading}
-        error={authError}
+        onSuccess={() => setShowAuth(false)}
       />
     );
   }
