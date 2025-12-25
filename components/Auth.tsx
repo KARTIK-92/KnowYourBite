@@ -31,11 +31,15 @@ export const Auth: React.FC<AuthProps> = ({ onGuest, onSuccess }) => {
         onSuccess();
       } else {
         // SIGNUP
+        // Get the actual URL of the site (whether localhost or vercel)
+        const redirectUrl = window.location.origin;
+
         const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
-            data: { full_name: formData.name }
+            data: { full_name: formData.name },
+            emailRedirectTo: redirectUrl // CRITICAL: Tells Supabase where to send the user back
           }
         });
 
@@ -64,7 +68,12 @@ export const Auth: React.FC<AuthProps> = ({ onGuest, onSuccess }) => {
           }
         }
         
-        onSuccess();
+        // Show success message or auto-login logic if email confirmation is disabled
+        if (data.user && data.session) {
+           onSuccess();
+        } else {
+           setError("Check your email for the confirmation link!");
+        }
       }
     } catch (err: any) {
       setError(err.message || "Authentication failed.");
@@ -144,7 +153,11 @@ export const Auth: React.FC<AuthProps> = ({ onGuest, onSuccess }) => {
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg text-center font-medium"
+                className={`p-3 text-sm rounded-lg text-center font-medium ${
+                  error.includes("Check your email") 
+                  ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400"
+                  : "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
+                }`}
               >
                 {error}
               </motion.div>
