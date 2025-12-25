@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Leaf, Search, PieChart, User, Sun, Moon, LogOut } from 'lucide-react';
+import { Leaf, Search, PieChart, User, Sun, Moon } from 'lucide-react';
 import { UserProfile } from '../types';
 
 interface LayoutProps {
@@ -10,10 +9,9 @@ interface LayoutProps {
   user: UserProfile;
   isDarkMode: boolean;
   toggleTheme: () => void;
-  onLogout: () => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, user, isDarkMode, toggleTheme, onLogout }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, user, isDarkMode, toggleTheme }) => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-300">
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-slate-200 dark:border-slate-800">
@@ -52,24 +50,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                </button>
 
-               <div className="hidden md:flex items-center space-x-3 pl-3 border-l border-slate-200 dark:border-slate-700">
+               <div className="hidden md:flex items-center space-x-3">
                   <div className="flex flex-col items-end">
                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{user.name}</span>
-                     <span className="text-xs text-slate-400 dark:text-slate-500">Free Account</span>
+                     <span className="text-xs text-slate-400 dark:text-slate-500">Basic Plan</span>
                   </div>
-                  <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center border-2 border-white dark:border-slate-700 shadow-sm relative group cursor-pointer">
+                  <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center border-2 border-white dark:border-slate-700 shadow-sm">
                      <User size={20} className="text-slate-500 dark:text-slate-400" />
-                     
-                     {/* Dropdown for logout */}
-                     <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all transform origin-top-right">
-                        <button 
-                          onClick={onLogout}
-                          className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors"
-                        >
-                          <LogOut size={16} className="mr-2" />
-                          Sign Out
-                        </button>
-                     </div>
                   </div>
                </div>
             </div>
@@ -81,13 +68,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
            <MobileNavItem active={currentView === 'hero'} onClick={() => onNavigate('hero')} icon={<Leaf />} label="Home" />
            <MobileNavItem active={currentView === 'search' || currentView === 'details'} onClick={() => onNavigate('search')} icon={<Search />} label="Search" />
            <MobileNavItem active={currentView === 'planner'} onClick={() => onNavigate('planner')} icon={<PieChart />} label="Plan" />
-           <button 
-             onClick={onLogout}
-             className="flex flex-col items-center justify-center p-2 rounded-lg text-slate-400 dark:text-slate-600"
-           >
-             <LogOut size={24} />
-             <span className="text-xs mt-1 font-medium">Logout</span>
-           </button>
         </div>
       </nav>
 

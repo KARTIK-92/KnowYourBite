@@ -1,20 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Hero } from './components/Hero';
 import { ProductSearch } from './components/ProductSearch';
 import { ProductDetails } from './components/ProductDetails';
 import { DietPlanner } from './components/DietPlanner';
-import { Auth } from './components/Auth';
 import { ProductData, UserProfile } from './types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { searchProductByName } from './services/gemini';
 
-// Mock initial user for guest
-const GUEST_USER: UserProfile = {
-  id: "guest",
-  name: "Guest User",
-  email: "guest@example.com",
+// Mock initial user
+const INITIAL_USER: UserProfile = {
+  name: "Alex Health",
+  email: "alex@example.com",
   dailyGoals: {
     calories: 2200,
     protein: 150,
@@ -28,12 +25,8 @@ const GUEST_USER: UserProfile = {
 export default function App() {
   const [currentView, setCurrentView] = useState<'hero' | 'search' | 'details' | 'planner'>('hero');
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
-  const [user, setUser] = useState<UserProfile>(GUEST_USER);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [showAuth, setShowAuth] = useState(true);
   
   // Theme management
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -43,29 +36,6 @@ export default function App() {
     }
     return false;
   });
-
-  // Check for logged in user on mount
-  useEffect(() => {
-    const savedUser = localStorage.getItem('kyb_current_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
-      setShowAuth(false);
-    } else {
-      setShowAuth(true);
-    }
-  }, []);
-
-  // Persist user state whenever it changes (if authenticated)
-  useEffect(() => {
-    if (isAuthenticated && user.id !== 'guest') {
-      localStorage.setItem('kyb_current_user', JSON.stringify(user));
-      // Update the user in the "database" (users array)
-      const users = JSON.parse(localStorage.getItem('kyb_users') || '[]');
-      const updatedUsers = users.map((u: UserProfile) => u.id === user.id ? user : u);
-      localStorage.setItem('kyb_users', JSON.stringify(updatedUsers));
-    }
-  }, [user, isAuthenticated]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -84,14 +54,6 @@ export default function App() {
   };
 
   const handleProductSelect = (product: ProductData) => {
-    // Add to history if not already there (check by name for simplicity)
-    const newHistory = [product, ...user.history.filter(p => p.name !== product.name)].slice(0, 10); // Keep last 10
-    
-    setUser(prev => ({
-      ...prev,
-      history: newHistory
-    }));
-
     setSelectedProduct(product);
     navigateTo('details');
   };
@@ -100,7 +62,7 @@ export default function App() {
     setIsLoadingDetails(true);
     try {
       const product = await searchProductByName(query);
-      handleProductSelect(product);
+      setSelectedProduct(product);
     } catch (error) {
       console.error("Failed to search product details:", error);
     } finally {
@@ -113,91 +75,7 @@ export default function App() {
       ...prev,
       dietPlan: [...prev.dietPlan, { product, quantity: 1, addedAt: new Date().toISOString() }]
     }));
-    // Optional: navigate to planner after adding
-    // navigateTo('planner'); 
-    alert(`${product.name} added to your diet plan!`);
   };
-
-  // Auth Handlers
-  const handleLogin = async (email: string, password: string) => {
-    setAuthLoading(true);
-    setAuthError(null);
-    
-    // Simulate network delay
-    setTimeout(() => {
-      const users = JSON.parse(localStorage.getItem('kyb_users') || '[]');
-      const foundUser = users.find((u: UserProfile) => u.email === email && u.password === password);
-      
-      if (foundUser) {
-        setUser(foundUser);
-        setIsAuthenticated(true);
-        localStorage.setItem('kyb_current_user', JSON.stringify(foundUser));
-        setShowAuth(false);
-      } else {
-        setAuthError("Invalid email or password");
-      }
-      setAuthLoading(false);
-    }, 1000);
-  };
-
-  const handleSignup = async (name: string, email: string, password: string) => {
-    setAuthLoading(true);
-    setAuthError(null);
-
-    setTimeout(() => {
-      const users = JSON.parse(localStorage.getItem('kyb_users') || '[]');
-      if (users.find((u: UserProfile) => u.email === email)) {
-        setAuthError("Email already exists");
-        setAuthLoading(false);
-        return;
-      }
-
-      const newUser: UserProfile = {
-        ...GUEST_USER,
-        id: crypto.randomUUID(),
-        name,
-        email,
-        password, // In real app, hash this!
-        history: [],
-        dietPlan: []
-      };
-
-      users.push(newUser);
-      localStorage.setItem('kyb_users', JSON.stringify(users));
-      
-      setUser(newUser);
-      setIsAuthenticated(true);
-      localStorage.setItem('kyb_current_user', JSON.stringify(newUser));
-      setShowAuth(false);
-      setAuthLoading(false);
-    }, 1000);
-  };
-
-  const handleGuest = () => {
-    setUser(GUEST_USER);
-    setIsAuthenticated(false);
-    setShowAuth(false);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('kyb_current_user');
-    setUser(GUEST_USER);
-    setIsAuthenticated(false);
-    setShowAuth(true);
-    setCurrentView('hero');
-  };
-
-  if (showAuth) {
-    return (
-      <Auth 
-        onLogin={handleLogin} 
-        onSignup={handleSignup} 
-        onGuest={handleGuest}
-        isLoading={authLoading}
-        error={authError}
-      />
-    );
-  }
 
   return (
     <Layout 
@@ -206,7 +84,6 @@ export default function App() {
       user={user}
       isDarkMode={isDarkMode}
       toggleTheme={toggleTheme}
-      onLogout={handleLogout}
     >
       <AnimatePresence mode="wait">
         {currentView === 'hero' && (
@@ -229,10 +106,7 @@ export default function App() {
             exit={{ opacity: 0, x: -20 }}
             className="w-full max-w-4xl mx-auto px-4"
           >
-            <ProductSearch 
-              onProductFound={handleProductSelect} 
-              recentHistory={user.history}
-            />
+            <ProductSearch onProductFound={handleProductSelect} />
           </motion.div>
         )}
 

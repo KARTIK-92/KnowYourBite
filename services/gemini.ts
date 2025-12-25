@@ -6,20 +6,9 @@ let aiInstance: GoogleGenAI | null = null;
 
 const getAi = () => {
   if (!aiInstance) {
-    let apiKey: string | undefined;
-    
-    // Safely attempt to access process.env
-    try {
-      if (typeof process !== 'undefined' && process.env) {
-        apiKey = process.env.API_KEY;
-      }
-    } catch (e) {
-      console.warn("Error accessing process.env:", e);
-    }
-
+    const apiKey = process.env.API_KEY;
     if (!apiKey) {
-      console.error("System Error: API_KEY is missing.");
-      throw new Error("Configuration Error: API Key is missing. The app requires an API Key to function.");
+      throw new Error("API Key is missing. Please ensure process.env.API_KEY is set.");
     }
     aiInstance = new GoogleGenAI({ apiKey });
   }
@@ -104,18 +93,15 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductD
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("No response from AI");
-    
-    const data = JSON.parse(text);
+    const data = JSON.parse(response.text || "{}");
     return {
       ...data,
       id: crypto.randomUUID(),
       imageUrl: `data:image/jpeg;base64,${base64Image}` // Store the image to show it back
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Gemini Image Analysis Error:", error);
-    throw new Error(error.message || "Failed to analyze product image.");
+    throw new Error("Failed to analyze product image.");
   }
 };
 
@@ -186,10 +172,7 @@ export const searchProductByName = async (query: string): Promise<ProductData> =
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("No response from AI");
-
-    const data = JSON.parse(text);
+    const data = JSON.parse(response.text || "{}");
     
     // Use OFF image if available, otherwise fallback to placeholder
     const imageUrl = offData?.image_front_url || offData?.image_url || `https://placehold.co/400x400/e2e8f0/1e293b?text=${encodeURIComponent(data.name)}`;
@@ -199,9 +182,9 @@ export const searchProductByName = async (query: string): Promise<ProductData> =
       id: crypto.randomUUID(),
       imageUrl: imageUrl
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Gemini Text Analysis Error:", error);
-    throw new Error(error.message || "Failed to find product information.");
+    throw new Error("Failed to find product information.");
   }
 };
 
@@ -230,8 +213,8 @@ export const generatePersonalizedDietPlan = async (stats: UserStats): Promise<Da
     });
 
     return JSON.parse(response.text || "{}");
-  } catch (error: any) {
+  } catch (error) {
     console.error("Gemini Diet Plan Generation Error:", error);
-    throw new Error(error.message || "Failed to generate diet plan.");
+    throw new Error("Failed to generate diet plan.");
   }
 };
