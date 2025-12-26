@@ -18,6 +18,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
   const [showUserMenu, setShowUserMenu] = useState(false);
   const isGuest = user.id === 'guest';
 
+  const handleLogoClick = () => {
+    onNavigate('hero');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen text-slate-900 dark:text-slate-100 flex flex-col font-sans relative selection:bg-emerald-500/30 selection:text-emerald-500 transition-colors duration-500">
       
@@ -31,7 +36,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
         >
           {/* Logo Pill */}
           <button 
-            onClick={() => onNavigate('hero')}
+            onClick={handleLogoClick}
             className="flex items-center gap-2 px-4 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
           >
             <div className="relative">
